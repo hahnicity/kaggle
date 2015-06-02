@@ -18,4 +18,9 @@ setup(
         "matplotlib",
         "scikit-learn",
     ],
+    entry_points={
+        "console_scripts": [
+            "titanic=titanic.model:main",
+        ]
+    }
 )
