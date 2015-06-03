@@ -1,3 +1,4 @@
+import csv
 from os.path import abspath, dirname, join
 
 import numpy
@@ -14,19 +15,23 @@ def get_training_data(data_set):
 
 def get_data(data_set):
     data_set["Sex"] = data_set["Sex"] == "male"
-    data_set = data_set[numpy.isfinite(data_set.Age)]  # XXX Don't filter out NaNs
-    data_set.index = range(len(data_set))
+    data_set.Age = data_set.Age.map(lambda x: -1 if numpy.isnan(x) else x)
+    data_set.Fare = data_set.Fare.map(lambda x: -1 if numpy.isnan(x) else x)
     del data_set["Name"]
     del data_set["PassengerId"]
-    del data_set["Fare"]
     del data_set["Ticket"]
-    # This is a questionable deletion. But do it for now
-    #
-    # I guess the only thing that would make it relevant is if you
-    # could get some map of the ship
     del data_set["Cabin"]
     del data_set["Embarked"]
     return data_set
+
+
+def write_output(predictions):
+    # passenger id is essentially the DataFrame id plus 892
+    with open("titanic-results.csv", "w") as csvfile:
+        writer = csv.writer(csvfile, delimiter=",")
+        writer.writerow(["PassengerId", "Survived"])
+        for idx, val in enumerate(predictions):  # predictions should be an array
+            writer.writerow([idx + 892, val])
 
 
 def main():
@@ -38,4 +43,4 @@ def main():
     testing_path = join(working_dir, "test.csv")
     testing_set = get_data(read_csv(testing_path))
     predictions = classifier.predict(testing_set)
-    import pdb; pdb.set_trace()
+    write_output(predictions)
