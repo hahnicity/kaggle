@@ -9,5 +9,5 @@ First project. The following models yielded me the following rates on Kaggle thu
 
 model        |rate
 -------------|------
-SVM          |0.77990
+SVM          |0.78469
 Random Forest|0.77033
