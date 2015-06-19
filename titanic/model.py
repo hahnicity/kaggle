@@ -33,7 +33,7 @@ def get_training_data(data_set):
 
 
 def get_data(data_set):
-    data_set["Sex"] = data_set.Sex.map(lambda x: 1 if x == "female" else 0)
+    data_set["Sex"] = data_set.Sex.map({"male": 0, "female": 1})
     median_age = data_set.Age.median()
     fare_mapping = {
         1: data_set[data_set.Pclass == 1].Fare.median(),
@@ -49,7 +49,6 @@ def get_data(data_set):
     data_set.Age = data_set.Age.map(lambda x: 1 if x <= 10.0 else 0)
     # In the future instead of replacing everyone with the mean age replace them
     # with a proper age distribution...maybe according to bayes??
-    fare_bins = [(0, 10), (10, 45), (45, 60), (60, 100), (100, 600)]
     for i in range(len(data_set)):
         if numpy.isnan(data_set.iloc[i].Fare):
             data_set.loc[i, "Fare"] = fare_mapping[data_set.iloc[i].Pclass]
@@ -58,12 +57,13 @@ def get_data(data_set):
     # The following transformation increases the accuracy of the random forest at the expense of
     # the SVM. Makes sense to me why, we sacrifice some accuracy on fare to more easily
     # bin out fares into a tree structure.
-    for i in range(len(data_set)):
-        for idx, bin_ in enumerate(fare_bins):
-            low, high = bin_
-            if data_set.iloc[i].Fare >= low and data_set.iloc[i].Fare < high:
-                data_set.loc[i, "Fare"] = idx
-    data_set["Embarked"] = data_set.Embarked.map(lambda x: {numpy.nan: -1, "S": 0, "Q": 1, "C": 2}[x])
+    #fare_bins = [(0, 10), (10, 45), (45, 60), (60, 100), (100, 600)]
+    #for i in range(len(data_set)):
+    #    for idx, bin_ in enumerate(fare_bins):
+    #        low, high = bin_
+    #        if data_set.iloc[i].Fare >= low and data_set.iloc[i].Fare < high:
+    #            data_set.loc[i, "Fare"] = idx
+    data_set["Embarked"] = data_set.Embarked.map({numpy.nan: -1, "S": 0, "Q": 1, "C": 2})
     data_set.Cabin = data_set.Cabin.map(lambda x: 1 if isinstance(x, str) else 0)
     del data_set["Name"]
     del data_set["PassengerId"]
