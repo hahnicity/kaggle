@@ -34,44 +34,33 @@ def get_training_data(data_set):
 
 def get_data(data_set):
     data_set["Sex"] = data_set.Sex.map({"male": 0, "female": 1})
-    median_age = data_set.Age.median()
     fare_mapping = {
-        1: data_set[data_set.Pclass == 1].Fare.median(),
-        2: data_set[data_set.Pclass == 2].Fare.median(),
-        3: data_set[data_set.Pclass == 3].Fare.median()
+        1: data_set[data_set.Pclass == 1].Fare.mean(),
+        2: data_set[data_set.Pclass == 2].Fare.mean(),
+        3: data_set[data_set.Pclass == 3].Fare.mean()
     }
-    # So from the data it looks like age is only a good predictor if we ask if the
-    # person is 10 or less (from rough binning). So just do that on a boolean
-    #
-    # In the future instead of replacing everyone with the mean age replace them
-    # with a proper age distribution...maybe according to bayes??
-    data_set.Age = data_set.Age.map(lambda x: median_age if numpy.isnan(x) else x)
-    data_set.Age = data_set.Age.map(lambda x: 1 if x <= 10.0 else 0)
-    # In the future instead of replacing everyone with the mean age replace them
-    # with a proper age distribution...maybe according to bayes??
-    for i in range(len(data_set)):
-        if numpy.isnan(data_set.iloc[i].Fare):
-            data_set.loc[i, "Fare"] = fare_mapping[data_set.iloc[i].Pclass]
-    #data_set.Fare = data_set.Fare.map(lambda x: 1 if x > 50 else 0)
-    #
-    # The following transformation increases the accuracy of the random forest at the expense of
-    # the SVM. Makes sense to me why, we sacrifice some accuracy on fare to more easily
-    # bin out fares into a tree structure.
-    #fare_bins = [(0, 10), (10, 45), (45, 60), (60, 100), (100, 600)]
-    #for i in range(len(data_set)):
-    #    for idx, bin_ in enumerate(fare_bins):
-    #        low, high = bin_
-    #        if data_set.iloc[i].Fare >= low and data_set.iloc[i].Fare < high:
-    #            data_set.loc[i, "Fare"] = idx
+    titles = data_set.Name.map(lambda x: x.split(",")[-1].split(".")[0].strip())
+    mean_ages_by_title = {title: data_set[titles == title].Age.mean() for title in titles.unique()}
+    # Ensure no nan's sneak into the mapping
+    for k, v in mean_ages_by_title.items():
+        if numpy.isnan(v):
+            # This is a rare case, so just set it to mean age
+            mean_ages_by_title[k] = data_set.Age.mean()
+    for i in data_set[data_set.Age.isnull()].index:
+        title = titles.iloc[i]
+        data_set.loc[i, "Age"] = mean_ages_by_title[title]
+    for i in data_set[(data_set.Fare.isnull()) | (data_set.Fare == 0.0)].index:
+        data_set.loc[i, "Fare"] = fare_mapping[data_set.iloc[i].Pclass]
+    data_set["LifeboatPriority"] = (
+        ((data_set.Pclass == 1) | (data_set.Pclass == 2)) &
+        ((data_set.Sex == 1) | (data_set.Age <= 15))
+    ).map({False: 0, True: 1})
     data_set["Embarked"] = data_set.Embarked.map({numpy.nan: -1, "S": 0, "Q": 1, "C": 2})
     data_set.Cabin = data_set.Cabin.map(lambda x: 1 if isinstance(x, str) else 0)
     del data_set["Name"]
     del data_set["PassengerId"]
     del data_set["Ticket"]
-    #del data_set["Fare"]  # XXX comment if you want
-    #del data_set["Parch"]  # XXX comment if you want
-    #del data_set["SibSp"]  # XXX comment if you want
-    #data_set = perform_feature_scaling(data_set)
+    data_set = perform_feature_scaling(data_set)
     return data_set
 
 
@@ -111,7 +100,6 @@ def main():
     x_cv = x[cv_frac:]
     y_cv = y[cv_frac:]
     best, candidates = validate_classifiers(x_train, y_train, x_cv, y_cv)
-    import pdb; pdb.set_trace()
     if args.predict:
         testing_path = join(working_dir, "test.csv")
         testing_set = get_data(read_csv(testing_path))
